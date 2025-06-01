@@ -17,9 +17,8 @@ def analyze_stock(ticker_symbol):
     # Fetch stock data
     stock = yf.Ticker(ticker_symbol)
     stock_name = stock.info.get('longName', ticker_symbol)
-    # history = stock.history(start="1997-05-15", end=dt.datetime.today().strftime('%Y-%m-%d'))
-    history = stock.history(start="2017-07-14", end="2022-12-16")
-    
+    history = stock.history(start="1900-01-01", end=dt.datetime.today().strftime('%Y-%m-%d'))
+
     # Round for user readability
     history_reset = history.reset_index()
     cols_to_round = ['Open', 'High', 'Low', 'Close', 'Volume']
