@@ -1,5 +1,4 @@
 # Import key libraries and modules
-
 import yfinance as yf
 import matplotlib.pyplot as plt
 import plotly.express as px
@@ -8,16 +7,22 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 import cufflinks as cf
+import sys
+
+ticker_symbol = input(f'What stock would you like to evaluate? ').strip().upper()
 
 # Define a function that analyzes the given stock
 def analyze_stock(ticker_symbol):
-    # Configuration
-    ticker_symbol = ticker_symbol # Select your stock to evaluate
-
     # Fetch stock data
-    stock = yf.Ticker(ticker_symbol)
-    stock_name = stock.info.get('longName', ticker_symbol)
+    try:
+        stock = yf.Ticker(ticker_symbol)
+        info = stock.info  # This will fail if the ticker is invalid
+    except Exception:
+        print(f"{ticker_symbol} is not a valid stock ticker on Yahoo Finance.")
+        sys.exit()
+
     history = stock.history(start="1900-01-01", end=dt.datetime.today().strftime('%Y-%m-%d'))
+    stock_name = info.get('longName', ticker_symbol)
 
     # Round for user readability
     history_reset = history.reset_index()
@@ -123,7 +128,7 @@ def plot_daily_low(df, stock_name):
     fig.write_html("daily_low_chart.html", auto_open=True)
 
 
-history, stock_name = analyze_stock('AMZN')
+history, stock_name = analyze_stock(ticker_symbol)
 plot_daily_return(history, stock_name)
 plot_daily_high(history, stock_name)
 plot_daily_low(history, stock_name)
