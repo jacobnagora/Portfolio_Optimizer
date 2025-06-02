@@ -1,12 +1,7 @@
 # Import key libraries and modules
 import yfinance as yf
-import matplotlib.pyplot as plt
-import plotly.express as px
 import plotly.graph_objects as go
-import numpy as np
-import pandas as pd
 import datetime as dt
-import cufflinks as cf
 import sys
 
 ticker_symbol = input(f'What stock would you like to evaluate? ').strip().upper()
@@ -34,14 +29,14 @@ def analyze_stock(ticker_symbol):
     history['% Daily Return'] = history['Close'].pct_change(1) * 100
     history['% Daily Return'] = history['% Daily Return'].fillna(0)
     # Calculate the highest percentage daily return
-    print(f'The highest daily return of {stock_name} to date was {history["% Daily Return"].max().round(2)}%.')
+    print(f'The highest daily return of {stock_name} to date was {round(history["% Daily Return"].max(), 2)}%.')
     # Calculate the lowest percentage daily return 
-    print(f'The worst daily return of {stock_name} to date was {history["% Daily Return"].min().round(2)}%.')
+    print(f'The worst daily return of {stock_name} to date was {round(history["% Daily Return"].min(), 2)}%.')
     # Calculate the stock mean return
     stock_mean = history['% Daily Return'].mean().round(2)
     print(f"The mean return of {stock_name} is {stock_mean}%.")
     # Calculate the stock standard deviation
-    stock_std_dev = history['% Daily Return'].std().round(2)
+    stock_std_dev = round(history['% Daily Return'].std(), 2)
     print(f'The current standard deviation of {stock_name} is {stock_std_dev}%.')
     return history.reset_index(), stock_name
 
@@ -110,7 +105,7 @@ def plot_daily_low(df, stock_name):
         x=df['Date'],
         y=df['Low'],
         mode='lines',
-        name='High'
+        name='Low'
     ))
 
     # Update layout styling
@@ -126,7 +121,6 @@ def plot_daily_low(df, stock_name):
 
     # Show the chart (opens in browser)
     fig.write_html("daily_low_chart.html", auto_open=True)
-
 
 history, stock_name = analyze_stock(ticker_symbol)
 plot_daily_return(history, stock_name)
