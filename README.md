@@ -99,7 +99,7 @@ Optimal Portfolio Allocation (Max Sharpe Ratio):
 
 ## Screenshots
 
-### 📈 Risk vs Return Plot
+### Risk vs Return Plot
 
 Displays the expected return, volatility, and Sharpe ratio of each asset. The optimized portfolio is highlighted.
 
