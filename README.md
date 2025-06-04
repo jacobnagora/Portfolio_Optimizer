@@ -24,6 +24,8 @@ This application allows users to:
   * **Portfolio vs. SPY performance** — showing relative growth over time
 * Export results to auto-generated HTML reports
 
+> **Note:** This tool calculates "expected return" based on historical data (e.g., CAPM estimates or annualized past performance). It does **not predict** future returns or incorporate forward-looking factors like valuation, analyst forecasts, or macroeconomic trends. Users should interpret results as **analytical outputs**, not investment advice or forecasts.
+
 ## Usage
 
 1. Clone the repository or download the source code.
@@ -54,16 +56,64 @@ This application allows users to:
      * `risk_return_report.html`
      * `portfolio_vs_spy_report.html`
 
-## Output Example
+## Example Run
 
-* **Risk vs. Return Plot**
-  Bubble chart showing each asset’s volatility, expected return, and Sharpe ratio — plus a highlighted point for the optimized portfolio.
+Suppose you want to analyze a diversified, defensive portfolio of 10 blue-chip U.S. stocks with an initial investment of **\$100,000**, assuming an expected market return of **8%** and a risk-free rate of **3%**.
 
-* **Performance vs. SPY**
-  Line chart comparing the optimized portfolio’s growth over time to the S\&P 500.
+**Tickers:**
 
-* **Console Output**
-  Sharpe ratios, expected returns, volatilities, optimal weights, and dollar allocations are neatly displayed for quick analysis.
+```
+JNJ  PG  KO  PEP  MCD  WMT  COST  MRK  HD  CL
+```
+
+**Inputs:**
+
+```
+Initial Investment: 100000
+Expected Market Return: 0.08
+Risk-Free Rate: 0.03
+```
+
+**Output Example:**
+
+```
+Optimal Portfolio Allocation (Max Sharpe Ratio):
+
+   JNJ                      → 11.53%
+   PG                       → 10.22%
+   KO                       → 9.85%
+   PEP                      → 9.94%
+   MCD                      → 10.11%
+   WMT                      → 11.02%
+   COST                     → 10.41%
+   MRK                      → 9.61%
+   HD                       → 9.84%
+   CL                       → 7.47%
+
+   Expected Annual Return  : 17.06%
+   Portfolio Std Dev       : 14.29%
+   Sharpe Ratio            : 0.98
+```
+
+## Screenshots
+
+### Risk vs Return Plot
+
+Displays the expected return, volatility, and Sharpe ratio of each asset. The optimized portfolio is highlighted.
+
+![Risk vs Return](assets/risk_return_report.png)
+
+### Portfolio vs SPY
+
+Compares the growth of the optimized portfolio over time against the SPY benchmark.
+
+![Portfolio vs SPY](assets/portfolio_vs_spy_report.png)
+
+### Terminal Output
+
+Summarized metrics for each asset including expected return, volatility, Sharpe ratio, and allocation.
+
+![Terminal Output](assets/terminal_output.png)
 
 ## Dependencies
 
