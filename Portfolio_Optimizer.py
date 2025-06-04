@@ -1,128 +1,157 @@
 # Import key libraries and modules
 import yfinance as yf
-import plotly.graph_objects as go
-import datetime as dt
-import sys
+import numpy as np
+import pandas as pd
+import re
 
-ticker_symbol = input(f'What stock would you like to evaluate? ').strip().upper()
+raw_input = input(f'What stock(s) would you like to evaluate? ').strip().upper()
 
-# Define a function that analyzes the given stock
-def analyze_stock(ticker_symbol):
-    # Fetch stock data
-    try:
-        stock = yf.Ticker(ticker_symbol)
-        info = stock.info  # This will fail if the ticker is invalid
-    except Exception:
-        print(f"{ticker_symbol} is not a valid stock ticker on Yahoo Finance.")
-        sys.exit()
+ticker_symbols = re.findall(r'[A-Z\.]+', raw_input)
 
-    history = stock.history(start="1900-01-01", end=dt.datetime.today().strftime('%Y-%m-%d'))
-    stock_name = info.get('longName', ticker_symbol)
+print(f'You entered tickers {ticker_symbols}.')
 
-    # Round for user readability
-    history_reset = history.reset_index()
-    cols_to_round = ['Open', 'High', 'Low', 'Close', 'Volume']
-    history_reset[cols_to_round] = history_reset[cols_to_round].round(2)
+# Initialize dictionary to store user-defined asset classes
+asset_classes = {}
 
-    # Calculate performance metrics and statistics
-    # Calculate percentage daily returns since inception
-    history['% Daily Return'] = history['Close'].pct_change(1) * 100
-    history['% Daily Return'] = history['% Daily Return'].fillna(0)
-    # Calculate the highest percentage daily return
-    print(f'The highest daily return of {stock_name} to date was {round(history["% Daily Return"].max(), 2)}%.')
-    # Calculate the lowest percentage daily return 
-    print(f'The worst daily return of {stock_name} to date was {round(history["% Daily Return"].min(), 2)}%.')
-    # Calculate the stock mean return
-    stock_mean = history['% Daily Return'].mean().round(2)
-    print(f"The mean return of {stock_name} is {stock_mean}%.")
-    # Calculate the stock standard deviation
-    stock_std_dev = round(history['% Daily Return'].std(), 2)
-    print(f'The current standard deviation of {stock_name} is {stock_std_dev}%.')
-    return history.reset_index(), stock_name
+# Define risk levels by asset class
+risk_by_class = {
+    'Equity': 'High',
+    'Fixed Income': 'Low to Medium',
+    'Alternative': 'High',
+    'Unknown': 'Unknown'
+}
 
-# Define a function that plots the daily stock price return % 
-def plot_daily_return(df, stock_name):
 
-    # Initialize the figure
-    fig = go.Figure()
+# Define a function that analyzes the given stock(s)
+def analyze_stocks(ticker_symbols):
+    results = []
+    # Fetch stock data and asset class
+    for ticker in ticker_symbols:
+        valid_classes = ['Equity', 'Fixed Income', 'Alternative']
 
-    # Add line trace for % Daily Return
-    fig.add_trace(go.Scatter(
-        x=df['Date'],
-        y=df['% Daily Return'],
-        mode='lines',
-        name='% Daily Return'
-    ))
+        # Get asset class from user with validation
+        while True:
+            asset_class = asset_classes.get(ticker)
+            if asset_class:
+                break
 
-    # Update layout styling
-    fig.update_layout(
-        title=f"{stock_name} - Daily Return (%) Over Time",
-        xaxis_title='Date',
-        yaxis_title='Daily Return (%)',
-        plot_bgcolor='white',
-        title_font=dict(size=22),
-        font=dict(size=14),
-        hovermode='x unified'
-    )
+            print(f"\nAsset class for {ticker} is not known.")
+            user_input = input(f"What is the asset class for {ticker}? [Equity / Fixed Income / Alternative]: ").strip().title()
 
-    # Show the chart (opens in browser)
-    fig.write_html("daily_return_chart.html", auto_open=True)
+            if user_input in valid_classes:
+                asset_class = user_input
+                print(f'Confirming that the asset class for {ticker} is {asset_class}')
+                break
+            else:
+                print(f"Invalid input: '{user_input}' is not a valid asset class. Please enter 'Equity', 'Fixed Income', or 'Alternative'.")
 
-# Define a function that plots the daily high price
-def plot_daily_high(df, stock_name):
-    # Initialize the figure
-    fig = go.Figure()
+        # Save the validated asset class
+        asset_classes[ticker] = asset_class
+        risk_level = risk_by_class[asset_class]
+    
+        try:
+            stock = yf.Ticker(ticker)
+            info = stock.info  # This will fail if the ticker is invalid
+            if 'longName' not in info or info.get('regularMarketPrice') is None:
+                print(f"{ticker} is invalid or inactive.")
+                continue
+            history = stock.history(period="max")
+            if history.empty:
+                print(f"{ticker} has no historical data.")
+                continue
 
-    # Add line trace for Daily High
-    fig.add_trace(go.Scatter(
-        x=df['Date'],
-        y=df['High'],
-        mode='lines',
-        name='High'
-    ))
+            stock_name = info.get('longName') or ticker
 
-    # Update layout styling
-    fig.update_layout(
-        title=f"{stock_name} - Daily High Over Time",
-        xaxis_title='Date',
-        yaxis_title='High',
-        plot_bgcolor='white',
-        title_font=dict(size=22),
-        font=dict(size=14),
-        hovermode='x unified'
-    )
+            # Round for user readability
+            history_reset = history.reset_index()
+            cols_to_round = ['Open', 'High', 'Low', 'Close', 'Volume']
+            history_reset[cols_to_round] = history_reset[cols_to_round].round(2)
 
-    # Show the chart (opens in browser)
-    fig.write_html("daily_high_chart.html", auto_open=True)
+            # Calculate and print summary info
+            history['% Daily Return'] = history['Close'].pct_change(1) * 100
+            history['% Daily Return'] = history['% Daily Return'].fillna(0)
+            print(f'The highest daily return of {stock_name} to date was {round(history["% Daily Return"].max(), 2)}%.')
+            print(f'The worst daily return of {stock_name} to date was {round(history["% Daily Return"].min(), 2)}%.')
+            stock_mean = history['% Daily Return'].mean().round(2)
+            print(f"The mean return of {stock_name} is {stock_mean}%.")
+            stock_std_dev = round(history['% Daily Return'].std(), 2)
+            print(f'The current standard deviation of {stock_name} is {stock_std_dev}%.')
+            
+            # Save this stock's result
+            history_reset['% Daily Return'] = history['% Daily Return'].values
+            results.append((history_reset, stock_name))
 
-# Define a function that plots the daily low price
-def plot_daily_low(df, stock_name):
-    # Initialize the figure
-    fig = go.Figure()
 
-    # Add line trace for Daily High
-    fig.add_trace(go.Scatter(
-        x=df['Date'],
-        y=df['Low'],
-        mode='lines',
-        name='Low'
-    ))
+        except Exception as e:
+            print(f"Error with {ticker}: {e}")
+            continue
+    return results
 
-    # Update layout styling
-    fig.update_layout(
-        title=f"{stock_name} - Daily Low Over Time",
-        xaxis_title='Date',
-        yaxis_title='Low',
-        plot_bgcolor='white',
-        title_font=dict(size=22),
-        font=dict(size=14),
-        hovermode='x unified'
-    )
+results = analyze_stocks(ticker_symbols)
 
-    # Show the chart (opens in browser)
-    fig.write_html("daily_low_chart.html", auto_open=True)
 
-history, stock_name = analyze_stock(ticker_symbol)
-plot_daily_return(history, stock_name)
-plot_daily_high(history, stock_name)
-plot_daily_low(history, stock_name)
+# Define a function that identifies the best possible combination of a portfolio of random stocks
+# 	1.	Gather data: Collect historical returns, calculate expected returns, standard deviations, and betas for each of the ten stocks.
+
+# Define a function to calculate expected return, standard deviation, and beta for each stock
+def gather_portfolio_metrics(results):
+    portfolio_data = []
+
+    # Define the market index for beta calculation
+    market_ticker = '^GSPC'
+    market = yf.Ticker(market_ticker)
+    market_hist = market.history(period="max")['Close'].pct_change().dropna()
+
+    for history_df, stock_name in results:
+        try:
+            # Ensure 'Date' is in datetime format and set as index
+            history_df['Date'] = pd.to_datetime(history_df['Date'])
+            history_df.set_index('Date', inplace=True)
+
+            # Convert daily return from % to decimal
+            stock_returns = history_df['% Daily Return'] / 100
+
+            # Align with market data
+            aligned_returns = pd.concat([stock_returns, market_hist], axis=1, join='inner')
+            aligned_returns.columns = ['stock_return', 'market_return']
+
+            # Calculate beta using covariance / variance
+            covariance = np.cov(aligned_returns['stock_return'], aligned_returns['market_return'])[0, 1]
+            market_variance = np.var(aligned_returns['market_return'])
+            beta = covariance / market_variance
+
+            # Calculate expected return (annualized) and standard deviation (annualized)
+            expected_return = stock_returns.mean() * 252
+            std_dev = stock_returns.std() * np.sqrt(252)
+
+            # Store the results in a dictionary
+            stock_metrics = {
+                'Name': stock_name,
+                'Expected Return (%)': round(expected_return * 100, 2),
+                'Standard Deviation (%)': round(std_dev * 100, 2),
+                'Beta': round(beta, 3)
+            }
+
+            portfolio_data.append(stock_metrics)
+
+        except Exception as e:
+            print(f"Error calculating metrics for {stock_name}: {e}")
+            continue
+
+    return portfolio_data
+
+# Analyze the tickers and calculate metrics
+results = analyze_stocks(ticker_symbols)
+portfolio_metrics = gather_portfolio_metrics(results)
+
+# Display the results
+for metric in portfolio_metrics:
+    print(f"\nStock: {metric['Name']}")
+    print(f"Expected Return: {metric['Expected Return (%)']}%")
+    print(f"Standard Deviation: {metric['Standard Deviation (%)']}%")
+    print(f"Beta: {metric['Beta']}")
+
+#	2.	Construct portfolios: Generate all possible combinations of these stocks. Focus on combinations with different weights rather than every single combination, since the number of combinations grows exponentially.
+#	3.	Evaluate: For each combination, calculate the portfolio’s expected return and standard deviation, and use betas to understand the systematic risk.
+#	4.	Identify the efficient frontier.
+#	5.	Select the superior combination: Depending on criteria—like the highest Sharpe ratio, the minimum variance, or a target beta.
