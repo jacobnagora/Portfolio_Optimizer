@@ -67,15 +67,30 @@ def price_scaling(df):
 merged_df = pd.DataFrame()
 for df, name, ticker in results:
     df = df[['Date', 'Close']].copy()
+    df.dropna(subset=['Close'], inplace=True)
     df.rename(columns={'Close': name}, inplace=True)
     if merged_df.empty:
         merged_df = df
     else:
         merged_df = pd.merge(merged_df, df, on='Date', how='inner')
 
+merged_df.dropna(axis=0, how='any', inplace=True)  # Drop any rows with NaNs across stocks
+
+
 # Optimize portfolio using Sharpe ratio
 def optimize_portfolio(df, num_portfolios=10_000, risk_free_rate=0.02):
-    returns = df.iloc[:, 1:].pct_change().dropna()
+    returns = df.iloc[:, 1:].pct_change()
+    returns = returns.replace([np.inf, -np.inf], np.nan).dropna(axis=0, how='any')
+    valid_cols = []
+    for col in returns.columns:
+        std = returns[col].std()
+        if pd.notna(std) and std > 0 and not returns[col].isna().any():
+            valid_cols.append(col)
+
+    returns = returns[valid_cols]
+
+    if returns.shape[1] < 2:
+        raise ValueError("Not enough valid assets with variance to optimize.")
     mean_returns = returns.mean() * 252
     cov_matrix = returns.cov() * 252
 
@@ -91,17 +106,6 @@ def optimize_portfolio(df, num_portfolios=10_000, risk_free_rate=0.02):
     best = max(results, key=lambda x: x[3])
     weights, ret, std, sharpe = best
     return [float(w) for w in weights], ret, std, sharpe
-
-# Asset allocation function
-def asset_allocation(df, weights, initial_investment):
-    portfolio_df = df.copy()
-    scaled_df = price_scaling(df)
-    for i, stock in enumerate(scaled_df.columns[1:]):
-        portfolio_df[stock] = scaled_df[stock] * weights[i] * initial_investment
-    portfolio_df['Portfolio Value'] = portfolio_df.iloc[:, 1:].sum(axis=1)
-    portfolio_df['Portfolio Daily Return'] = portfolio_df['Portfolio Value'].pct_change() * 100
-    portfolio_df.fillna(0, inplace=True)
-    return portfolio_df
 
 # Gather stock metrics
 def gather_portfolio_metrics(results, expected_market_return, risk_free_rate):
@@ -119,7 +123,9 @@ def gather_portfolio_metrics(results, expected_market_return, risk_free_rate):
             history_df.set_index('Date', inplace=True)
 
             stock_returns = history_df['Close'].pct_change().dropna()
-            stock_returns = pd.to_numeric(stock_returns, errors='coerce').dropna()
+            stock_returns = stock_returns.replace([np.inf, -np.inf], np.nan).dropna()
+            if stock_returns.empty or stock_returns.std() == 0:
+                raise ValueError(f"Insufficient or invalid data for {stock_name} to calculate standard deviation.")
             stock_returns.index = stock_returns.index.tz_localize(None)
 
             aligned_returns = pd.concat([stock_returns, market_hist], axis=1, join='inner')
@@ -241,7 +247,6 @@ os.system(f"open {report1}")
 
 
 # Simulate portfolio overt time compared to SPY
-
 # (a) We already have `merged_df` containing daily closes for each stock
 # (b) Compute the daily portfolio value (scaled_i * weight_i * initial_investment)
 def asset_allocation(df, weights, initial_investment):
@@ -250,7 +255,7 @@ def asset_allocation(df, weights, initial_investment):
     for i, stock in enumerate(scaled_df.columns[1:]):
         portfolio_df[stock] = scaled_df[stock] * weights[i] * initial_investment
     portfolio_df['Portfolio Value'] = portfolio_df.iloc[:, 1:].sum(axis=1)
-    portfolio_df.fillna(method='ffill', inplace=True)
+    portfolio_df.ffill(inplace=True)
     return portfolio_df
 
 optimal_df = asset_allocation(merged_df, best_weights, initial_investment) 
@@ -259,6 +264,7 @@ optimal_df = asset_allocation(merged_df, best_weights, initial_investment)
 # (c) Download SPY for the same date range
 spy = yf.Ticker("SPY").history(period="max")['Close']
 spy = spy.loc[optimal_df['Date'].min(): optimal_df['Date'].max()]
+spy.dropna(inplace=True)
 spy = spy.to_frame(name='SPY Close')
 spy['SPY Value'] = (spy['SPY Close'] / spy['SPY Close'].iloc[0]) * initial_investment
 

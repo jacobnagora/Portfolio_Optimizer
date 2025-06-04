@@ -2,6 +2,8 @@
 
 A Python-based portfolio analytics tool that applies Modern Portfolio Theory to construct and visualize optimal portfolios using real-time data from Yahoo Finance. It calculates risk-adjusted metrics like the Sharpe ratio and compares your optimized portfolio to SPY.
 
+![Python](https://img.shields.io/badge/python-3.12.7-blue.svg)
+
 ## Overview
 
 This application allows users to:
@@ -97,7 +99,7 @@ Optimal Portfolio Allocation (Max Sharpe Ratio):
 
 ## Screenshots
 
-### Risk vs Return Plot
+### 📈 Risk vs Return Plot
 
 Displays the expected return, volatility, and Sharpe ratio of each asset. The optimized portfolio is highlighted.
 
